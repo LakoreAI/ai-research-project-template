@@ -14,8 +14,8 @@ def get_run_name(
     random_suffix: bool = True,
     random_suffix_len: int = 6,
 ) -> str:
-    """Generate a unique, sortable run name with a timestamp."""
-    now = datetime.now().strftime("%m%d-%H%M")
+    """Generate a unique, sortable run name with a timestamp (YYYY-MM-DD)."""
+    now = datetime.now().strftime("%Y-%m-%d")
     rand_suffix = (
         "".join(
             random.Random().choices(
