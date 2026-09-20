@@ -30,6 +30,8 @@ git clone <your-repo-url> ai-research-project-template
 cd ai-research-project-template
 
 uv sync                # core: torch, numpy, scikit-learn
+uv sync --extra rich   # optional: pretty training summary (panels / tables)
+uv sync --extra wandb  # optional: Weights & Biases logging
 uv run pytest          # test suite
 
 # end-to-end on synthetic features, no dataset required

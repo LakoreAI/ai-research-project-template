@@ -13,6 +13,8 @@ dependencies = [
 
 [project.optional-dependencies]
 wandb = ["wandb>=0.16"]
+# Pretty training preamble (panels / tables). Falls back to plain text if absent.
+rich = ["rich>=13.0"]
 
 # Platform-aware torch builds.
 #   - Linux + NVIDIA: resolve the CUDA wheel index.

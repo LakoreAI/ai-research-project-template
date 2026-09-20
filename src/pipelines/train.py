@@ -30,10 +30,11 @@ from src.config import MLPConfig
 from src.data import dataset_from_npz, split_train_val
 from src.modules.loss import ClassificationLoss
 from src.modules.model import MLPClassifier
+from src.pipelines._utils import announce_training
 from src.pipelines.config import TrainingConfig, load_training_config
 from src.pipelines.eval import eval_per_epoch, format_report
 from src.utils.io_utils import load_env, save_checkpoint, save_json
-from src.utils.model_utils import count_parameters, detect_device, get_run_name
+from src.utils.model_utils import detect_device, get_run_name
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -241,7 +242,6 @@ def train(train_cfg: TrainingConfig):
         **(train_cfg.arch or {}),
     )
     model = build_model(model_cfg, device)
-    count_parameters(model)
     criterion = ClassificationLoss().to(device)
 
     optimizer = torch.optim.Adam(
@@ -260,13 +260,6 @@ def train(train_cfg: TrainingConfig):
     )
     ckpt_dir = Path(train_cfg.ckpt_dir) / run_name
     result_dir = Path(train_cfg.result_dir) / run_name
-    print(f"run: {run_name}")
-    print(
-        f"train/val/test batches: {len(train_loader)}/"
-        f"{len(val_loader) if val_loader else 0}/"
-        f"{len(test_loader) if test_loader else 0}  "
-        f"batch_size: {train_cfg.batch_size}  epochs: {train_cfg.epochs}"
-    )
 
     callbacks = build_callbacks(
         train_cfg, optimizer, run_name, {**asdict(model_cfg), **asdict(train_cfg)}
@@ -298,6 +291,18 @@ def train(train_cfg: TrainingConfig):
         print(f"resumed at step {step}, continuing from epoch {start_epoch}")
     else:
         step, start_epoch = 0, 1
+
+    announce_training(
+        model=model,
+        model_cfg=model_cfg,
+        train_cfg=train_cfg,
+        train_loader=train_loader,
+        train_dataset=train_dataset,
+        device=device,
+        run_name=run_name,
+        ckpt_dir=ckpt_dir,
+        result_dir=result_dir,
+    )
 
     history = []
     stopped_early = False
