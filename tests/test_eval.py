@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from src.config import MLPConfig
 from src.data import FeatureDataset, make_synthetic_data
 from src.modules.model import MLPClassifier
-from src.pipelines.eval import evaluate, format_report
+from src.pipelines.eval import eval_per_epoch, evaluate, format_report
 
 
 def make_loader(n=200, input_dim=12, num_classes=3, seed=0):
@@ -30,6 +30,19 @@ def test_evaluate_returns_finite_metrics():
     assert 0.0 <= result["f1"] <= 1.0
     assert len(result["confusion"]) == num_classes
     assert set(result["per_class"]) == set(range(num_classes))
+
+
+def test_evaluate_delegates_to_eval_per_epoch():
+    loader, num_classes, input_dim = make_loader(n=120, seed=3)
+    cfg = MLPConfig(input_dim=input_dim, num_classes=num_classes)
+    torch.manual_seed(0)
+    model = MLPClassifier(cfg).eval()
+
+    per_epoch = eval_per_epoch(
+        model, loader, torch.device("cpu"), num_classes=num_classes
+    )
+    wrapped = evaluate(model, loader, torch.device("cpu"), num_classes=num_classes)
+    assert per_epoch == wrapped
 
 
 def test_confusion_rows_sum_to_support():

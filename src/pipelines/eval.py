@@ -1,11 +1,13 @@
 """Classification evaluation: accuracy, macro-F1, loss, and per-class report.
 
-The single entry point is `evaluate(model, loader, device)`, which returns a
-plain dict so the training loop can log it and the standalone evaluator can
-save it as JSON. Add task-specific metrics here.
+The per-pass work lives in `eval_per_epoch`, which runs the model over one
+loader and returns a plain metrics dict. `evaluate` is the public entry point:
+it calls `eval_per_epoch` and optionally persists the result. Add task-specific
+metrics inside `eval_per_epoch`.
 """
 
-from typing import Dict, Optional
+from pathlib import Path
+from typing import Dict, Optional, Union
 
 import numpy as np
 import torch
@@ -14,18 +16,20 @@ from torch.utils.data import DataLoader
 
 from src.modules.loss import ClassificationLoss
 from src.modules.model import MLPClassifier
+from src.utils.io_utils import save_json
 
 
 @torch.no_grad()
-def evaluate(
+def eval_per_epoch(
     model: MLPClassifier,
     loader: DataLoader,
     device: torch.device,
     num_classes: Optional[int] = None,
     criterion: Optional[ClassificationLoss] = None,
 ) -> Dict[str, object]:
-    """Returns {"accuracy", "f1", "loss", "per_class", "confusion"}.
+    """Run one full pass over `loader` and return its metrics.
 
+    Returns {"accuracy", "f1", "loss", "per_class", "confusion"}.
     `accuracy` / `f1` are fractions in [0, 1]; `per_class` maps a class index
     to its accuracy; `confusion` is the raw (K, K) count matrix.
     """
@@ -73,6 +77,27 @@ def evaluate(
         "per_class": per_class,
         "confusion": conf.tolist(),
     }
+
+
+def evaluate(
+    model: MLPClassifier,
+    loader: DataLoader,
+    device: torch.device,
+    num_classes: Optional[int] = None,
+    criterion: Optional[ClassificationLoss] = None,
+    save_json_path: Optional[Union[str, Path]] = None,
+) -> Dict[str, object]:
+    """Evaluate `model` and optionally write the metrics dict to JSON.
+
+    Thin wrapper over `eval_per_epoch` — the single place that decides how a
+    result is persisted.
+    """
+    result = eval_per_epoch(
+        model, loader, device, num_classes=num_classes, criterion=criterion
+    )
+    if save_json_path is not None:
+        save_json(result, save_json_path)
+    return result
 
 
 def format_report(result: Dict[str, object]) -> str:

@@ -20,7 +20,6 @@ sys.path.insert(0, str(REPO_ROOT))
 from src.data import dataset_from_npz  # noqa: E402
 from src.pipelines.eval import evaluate, format_report  # noqa: E402
 from src.pipelines.infer import load_model  # noqa: E402
-from src.utils.io_utils import save_json  # noqa: E402
 from src.utils.model_utils import detect_device  # noqa: E402
 
 
@@ -39,11 +38,16 @@ def main() -> None:
     dataset = dataset_from_npz(args.data)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
-    result = evaluate(model, loader, device, num_classes=cfg.num_classes)
+    result = evaluate(
+        model,
+        loader,
+        device,
+        num_classes=cfg.num_classes,
+        save_json_path=args.json,
+    )
     print(format_report(result))
 
     if args.json:
-        save_json(result, args.json)
         print(f"saved: {args.json}")
 
 

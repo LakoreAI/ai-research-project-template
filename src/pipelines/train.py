@@ -31,7 +31,7 @@ from src.data import dataset_from_npz, split_train_val
 from src.modules.loss import ClassificationLoss
 from src.modules.model import MLPClassifier
 from src.pipelines.config import TrainingConfig, load_training_config
-from src.pipelines.eval import evaluate, format_report
+from src.pipelines.eval import eval_per_epoch, format_report
 from src.utils.io_utils import load_env, save_checkpoint, save_json
 from src.utils.model_utils import count_parameters, detect_device, get_run_name
 
@@ -217,20 +217,6 @@ def train_per_epoch(
     )
 
 
-@torch.no_grad()
-def loss_per_epoch(model, criterion, loader, device) -> float:
-    if loader is None:
-        return float("nan")
-    model.eval()
-    losses = []
-    for x, labels in loader:
-        x = x.float().to(device)
-        labels = labels.reshape(-1).long().to(device)
-        logits, _ = model(x)
-        losses.append(criterion(logits, labels).item())
-    return sum(losses) / len(losses) if losses else float("nan")
-
-
 def train(train_cfg: TrainingConfig):
     load_env(REPO_ROOT / ".env")  # WANDB_API_KEY for callbacks
     device = detect_device()
@@ -274,7 +260,6 @@ def train(train_cfg: TrainingConfig):
     )
     ckpt_dir = Path(train_cfg.ckpt_dir) / run_name
     result_dir = Path(train_cfg.result_dir) / run_name
-    metric_loader = test_loader or val_loader
     print(f"run: {run_name}")
     print(
         f"train/val/test batches: {len(train_loader)}/"
@@ -336,28 +321,44 @@ def train(train_cfg: TrainingConfig):
 
         should_validate = epoch % train_cfg.eval_every == 0 or epoch == train_cfg.epochs
         if should_validate:
-            val_loss = loss_per_epoch(model, criterion, val_loader, device)
-            extra = {}
-            if metric_loader is not None:
-                result = evaluate(
+            val_result = (
+                eval_per_epoch(
                     model,
-                    metric_loader,
+                    val_loader,
                     device,
                     num_classes=num_classes,
                     criterion=criterion,
                 )
+                if val_loader is not None
+                else None
+            )
+            # Report the test split when present, else fall back to the val
+            # split so a run without a held-out test still has metrics.
+            metric_result = (
+                eval_per_epoch(
+                    model,
+                    test_loader,
+                    device,
+                    num_classes=num_classes,
+                    criterion=criterion,
+                )
+                if test_loader is not None
+                else val_result
+            )
+            extra = {}
+            if metric_result is not None:
                 extra = {
-                    "accuracy": result["accuracy"],
-                    "f1": result["f1"],
-                    "metric_loss": result["loss"],
+                    "accuracy": metric_result["accuracy"],
+                    "f1": metric_result["f1"],
+                    "metric_loss": metric_result["loss"],
                 }
                 record.update(extra)
-                print(format_report(result))
+                print(format_report(metric_result))
             state = TrainerState(
                 step=step,
                 train_loss=train_loss,
                 epoch=epoch,
-                val_loss=val_loss if val_loader is not None else None,
+                val_loss=val_result["loss"] if val_result is not None else None,
                 extra=extra,
             )
             record["val_loss"] = state.val_loss
