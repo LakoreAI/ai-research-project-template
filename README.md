@@ -17,6 +17,7 @@ splits, pipelines, callbacks, scripts, tests) is what the template provides.
 - [Training](#training)
 - [Evaluation and inference](#evaluation-and-inference)
 - [Repository layout](#repository-layout)
+- [Documentation](#documentation)
 - [Configuration](#configuration)
 - [Extending the template](#extending-the-template)
 - [License](#license)
@@ -115,8 +116,19 @@ scripts/
 ├── data/                # synthetic dataset generator
 └── training/            # train, evaluate, smoke_test
 tests/                   # pytest suite
-docs/                    # research notes, experiment log
+docs/                    # all documents (see docs/README.md)
 notebooks/               # exploratory notebooks
+```
+
+## Documentation
+
+All documents live under `docs/` — nothing document-related belongs elsewhere.
+See [docs/README.md](docs/README.md) for the full convention. Analysis outputs
+and reports follow a date-then-topic layout:
+
+```
+docs/analysis/<yyyy-mm-dd>/<topic>/...{md|txt|csv|png|...}
+docs/reports/<yyyy-mm-dd>/<topic>/...{md|txt|csv|png|...}
 ```
 
 ## Configuration
